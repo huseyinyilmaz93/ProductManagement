@@ -1,0 +1,27 @@
+version: '3.8'
+
+services: 
+  mongo-db:
+    image: "mongo:latest"
+    ports:
+      - "27017:27017"
+    restart: "always"
+    
+  my-redis:
+    image: "redis:latest"
+    ports:
+      - "6379:6379"
+    environment:
+      - REDIS_REPLICATION_MODE=master
+    restart: "always"
+      
+  pm-api:
+    build:
+      context: .
+      dockerfile: PM.Api/Dockerfile
+    restart: "always"
+    ports:
+      - "7055:7055"
+    depends_on:
+      - mongo-db
+      - my-redis
