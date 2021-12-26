@@ -34,7 +34,9 @@ public class PMApiMiddleware
         {
             string pathString = httpContext.Request.Path.Value ?? string.Empty;
             string httpMethod = httpContext.Request.Method;
-            string id = httpContext.Request.Query.ContainsKey("id") ? httpContext.Request.Query["id"] : string.Empty;
+            string id = httpContext.Request.Query.ContainsKey(PMConstants.RedisObjectCachingAccessor) 
+                ? httpContext.Request.Query[PMConstants.RedisObjectCachingAccessor] 
+                : string.Empty;
 
             if(httpMethod == PMConstants.CachingHttpMethod && PMConstants.MemoryCacherDictionary.ContainsKey(pathString) && !string.IsNullOrWhiteSpace(id))
             {
@@ -88,14 +90,14 @@ public class PMApiMiddleware
         }
         catch (ValidateException ex)
         {
-            httpContext.Response.ContentType = "application/json";
+            httpContext.Response.ContentType = PMConstants.JsonContentType;
             httpContext.Response.StatusCode = (int)HttpStatusCode.BadRequest;
             await httpContext.Response.WriteAsJsonAsync(
                 new ErrorResponse(ex.Message));
         }
         catch (Exception ex)
         {
-            httpContext.Response.ContentType = "application/json";
+            httpContext.Response.ContentType = PMConstants.JsonContentType;
             httpContext.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
             await httpContext.Response.WriteAsync(ex.StackTrace ?? ex.ToString());
         }

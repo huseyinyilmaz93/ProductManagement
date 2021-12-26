@@ -10,6 +10,8 @@ public static class PMConstants
     public const string RedisConfigurationAccessor = "Redis:ConnectionString";
     public const string MongoDbConfigurationAccessor = "ConnectionStrings:MongoConnectionString";
     public const string CachingHttpMethod = "GET";
+    public const string JsonContentType = "application/json";
+    public const string RedisObjectCachingAccessor = "id";
 
     //TODO: Lazy load implementation. Read from database or read it from appsetting.json etc.
     public static Dictionary<string, Type> MemoryCacherDictionary = new Dictionary<string, Type>() { { "/api/products", typeof(Product) } };

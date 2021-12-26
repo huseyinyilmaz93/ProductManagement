@@ -1,19 +1,14 @@
 ﻿using PM.Api.Constants;
-using PM.Api.Helpers;
+using PM.Api.Managers;
 using StackExchange.Redis;
 
 namespace PM.Api.MemoryCacher;
 
-public interface IMemoryCacher
-{
-    void SetString(string key, string value);
-    void DeleteAll(string[] keys);
-    Task<string> GetStringAsync(string key);
-}
 
 //TODO: Retry and circuit breaker implementation with Polly.
-public class RedisMemoryCacher : IMemoryCacher
+public class RedisMemoryCacher : AbstractRemoteConnectionManager, IMemoryCacher
 {
+    private readonly Logger.ILogger _logger;
     private readonly IDatabase _redisDatabase;
 
     private const string deleteAllLuaScript = @"
@@ -25,30 +20,78 @@ public class RedisMemoryCacher : IMemoryCacher
         end
         return DELETEALL(KEYS)";
 
-    public RedisMemoryCacher(IConfiguration configuration)
+    public RedisMemoryCacher(Logger.ILogger logger, IConfiguration configuration)
     {
-        ConnectionMultiplexer redisConnection = ConnectionMultiplexer
-            .Connect(configuration.GetValue<string>(PMConstants.RedisConfigurationAccessor));
-        _redisDatabase = redisConnection.GetDatabase();
+        _logger = logger;
+        try
+        {
+            ConnectionMultiplexer redisConnection = ConnectionMultiplexer
+                .Connect(configuration.GetValue<string>(PMConstants.RedisConfigurationAccessor));
+            _redisDatabase = redisConnection.GetDatabase();
+
+            base.SetAliveStatus(true);
+        }
+        catch (Exception ex)
+        {
+            _logger.Log(ex.ToString());
+        }
     }
 
     public void SetString(string key, string value)
     {
-        //TODO: Logging and exception management
-        Task.Run(() 
-            => _redisDatabase.StringSet(key, value, PMConstants.DefaultRedisExpirity));
+        try
+        {
+            if(base.GetAliveStatus())
+                Task.Run(()
+                    => _redisDatabase.StringSet(key, value, PMConstants.DefaultRedisExpirity));
+        }
+        catch (RedisConnectionException ex)
+        {
+            base.SetAliveStatus(false);
+            _logger.Log(ex.ToString());
+        }
+        catch (Exception ex)
+        {
+            _logger.Log(ex.ToString());
+        }
     }
 
     public async Task<string> GetStringAsync(string key)
     {
-        return await _redisDatabase.StringGetAsync(key);
+        try
+        {
+            if(base.GetAliveStatus())
+                return await _redisDatabase.StringGetAsync(key);
+        }
+        catch (RedisConnectionException ex) 
+        {
+            base.SetAliveStatus(false);
+            _logger.Log(ex.ToString());
+        }
+        catch (Exception ex)
+        {
+            _logger.Log(ex.ToString());
+        }
+        return default;
     }
 
     public void DeleteAll(string[] keys)
     {
-        //TODO: Logging and exception management
-        Task.Run(() 
-            => _redisDatabase.ScriptEvaluate(deleteAllLuaScript, keys.Select((key) => new RedisKey(key)).ToArray()));
+        try
+        {
+            if (base.GetAliveStatus())
+                Task.Run(()
+                => _redisDatabase.ScriptEvaluate(deleteAllLuaScript, keys.Select((key) => new RedisKey(key)).ToArray()));
+        }
+        catch (RedisConnectionException ex)
+        {
+            base.SetAliveStatus(false);
+            _logger.Log(ex.ToString());
+        }
+        catch (Exception ex)
+        {
+            _logger.Log(ex.ToString());
+        }
     }
 }
 
