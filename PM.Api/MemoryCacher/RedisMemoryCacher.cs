@@ -6,6 +6,7 @@ namespace PM.Api.MemoryCacher;
 
 
 //TODO: Retry and circuit breaker implementation with Polly.
+//TODO: Lazy load implementation. If there is no redis server available, waits for redis connection down after multiple trying.
 public class RedisMemoryCacher : AbstractRemoteConnectionManager, IMemoryCacher
 {
     private readonly Logger.ILogger _logger;
