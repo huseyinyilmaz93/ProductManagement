@@ -1,4 +1,4 @@
-﻿namespace PM.Api.Managers;
+﻿namespace PM.Core.Managers;
 
 public abstract class AbstractRemoteConnectionManager
 {
